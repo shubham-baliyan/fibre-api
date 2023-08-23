@@ -80,17 +80,17 @@ app.use(express.json());
 
 app.get("/", async (req, res) => {
   await main();
-  let res = await getAllAssets(contract);
-  res.status(200).json(res);
+  let response = await getAllAssets(contract);
+  res.status(200).json(response);
 });
 
 app.post("/asset", async (req, res) => {
-  let res = await createAsset(contract, req.body);
-  res.status.json(res);
+  let response = await createAsset(contract, req.body);
+  res.status(200).json(response);
 });
 app.put("/asset", async (req, res) => {
-  let res = await transferAssetAsync(contract, req.body);
-  res.status.json(res);
+  let response = await transferAssetAsync(contract, req.body);
+  res.status.json(response);
 });
 async function main(): Promise<void> {
   await displayInputParameters();
