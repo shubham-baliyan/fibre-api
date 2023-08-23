@@ -269,29 +269,6 @@ async function readAssetByID(contract: Contract): Promise<void> {
 }
 
 /**
- * submitTransaction() will throw an error containing details of any error responses from the smart contract.
- */
-// async function updateNonExistentAsset(contract: Contract): Promise<void> {
-//   console.log(
-//     "\n--> Submit Transaction: UpdateAsset asset70, asset70 does not exist and should return an error"
-//   );
-
-//   try {
-//     await contract.submitTransaction(
-//       "UpdateAsset",
-//       "asset70",
-//       "blue",
-//       "5",
-//       "Tomoko",
-//       "300"
-//     );
-//     console.log("******** FAILED to return an error");
-//   } catch (error) {
-//     console.log("*** Successfully caught the error: \n", error);
-//   }
-// }
-
-/**
  * envOrDefault() will return the value of an environment variable, or a default value if the variable is undefined.
  */
 function envOrDefault(key: string, defaultValue: string): string {
@@ -312,4 +289,4 @@ async function displayInputParameters(): Promise<void> {
   console.log(`peerEndpoint:      ${peerEndpoint}`);
   console.log(`peerHostAlias:     ${peerHostAlias}`);
 }
-app.listen(3000, () => console.log("listening"));
+app.listen(3002, () => console.log("Fabric gateway server listening at 3002"));
