@@ -24,7 +24,7 @@ const channelName = envOrDefault("CHANNEL_NAME", "mychannel");
 const chaincodeName = envOrDefault("CHAINCODE_NAME", "basic");
 const mspId = envOrDefault("MSP_ID", "Org1MSP");
 
-// Path to crypto materials.
+// location to the crypto materials.
 const cryptoPath = envOrDefault(
   "CRYPTO_PATH",
   path.resolve(
@@ -39,13 +39,13 @@ const cryptoPath = envOrDefault(
   )
 );
 
-// Path to user private key directory.
+// locations to key of user 1.
 const keyDirectoryPath = envOrDefault(
   "KEY_DIRECTORY_PATH",
   path.resolve(cryptoPath, "users", "User1@org1.example.com", "msp", "keystore")
 );
 
-// Path to user certificate.
+// location to the user certificates
 const certPath = envOrDefault(
   "CERT_PATH",
   path.resolve(
@@ -58,46 +58,54 @@ const certPath = envOrDefault(
   )
 );
 
-// Path to peer tls certificate.
+// locations to the tls certificates of the peer of organisation 1
 const tlsCertPath = envOrDefault(
   "TLS_CERT_PATH",
   path.resolve(cryptoPath, "peers", "peer0.org1.example.com", "tls", "ca.crt")
 );
 
-// Gateway peer endpoint.
+// peer endpoint of gateway
 const peerEndpoint = envOrDefault("PEER_ENDPOINT", "localhost:7051");
 
-// Gateway peer SSL host name override.
 const peerHostAlias = envOrDefault("PEER_HOST_ALIAS", "peer0.org1.example.com");
 
 const utf8Decoder = new TextDecoder();
 const assetId = `asset${Date.now()}`;
+//globaly stored so these can be accessed while using the code
 let client, gateway, contract;
 
+//initializing the express framework
 const app = express();
+
+//using cors package for cross-origin call
 app.use(cors());
+//parsing the contents of request body
 app.use(express.json());
 
 app.get("/", async (req, res) => {
   await main();
-  let response = await getAllAssets(contract);
+
+  let response = await getAllTheAssets(contract);
+  //sending all the assets
   res.status(200).json(response);
 });
 
 app.post("/asset", async (req, res) => {
-  let response = await createAsset(contract, req.body);
+  let response = await createTheAsset(contract, req.body);
   res.status(200).json(response);
 });
 app.put("/asset", async (req, res) => {
-  let response = await transferAssetAsync(contract, req.body);
+  let response = await transferTheAssetAsynchronously(contract, req.body);
   res.status.json(response);
 });
+
 async function main(): Promise<void> {
   await displayInputParameters();
 
-  // The gRPC client connection should be shared by all Gateway connections to this endpoint.
+  //creating a gRPC connection which is going to shared by the gateway
   client = await newGrpcConnection();
 
+  //connecting the gateway
   gateway = connect({
     client,
     identity: await newIdentity(),
@@ -117,41 +125,17 @@ async function main(): Promise<void> {
     },
   });
 
-  //   try {
-  // Get a network instance representing the channel where the smart contract is deployed.
+  //getting the instance of the network where channel is deployed
   const network = gateway.getNetwork(channelName);
 
-  // Get the smart contract from the network.
+  // getting the instance of chaincode deployed on the network
   contract = network.getContract(chaincodeName);
 
-  // Initialize a set of asset data on the ledger using the chaincode 'InitLedger' function.
-  await initLedger(contract);
-
-  // Return all the current assets on the ledger.
-  // await getAllAssets(contract);
-
-  // // Create a new asset on the ledger.
-  // await createAsset(contract);
-
-  // // Update an existing asset asynchronously.
-  // await transferAssetAsync(contract);
-
-  // // Get the asset details by assetID.
-  // await readAssetByID(contract);
-
-  // // Update an asset which does not exist.
-  // await updateNonExistentAsset(contract);
-  //   } finally {
-  //     gateway.close();
-  //     client.close();
-  //   }
+  // initialize the ledger with some predifined assets
+  await initializeTheLedger(contract);
 }
 
-// main().catch(error => {
-//     console.error('******** FAILED to run the application:', error);
-//     process.exitCode = 1;
-// });
-
+//creates a gRPC connection and returns the instance
 async function newGrpcConnection(): Promise<grpc.Client> {
   const tlsRootCert = await fs.readFile(tlsCertPath);
   const tlsCredentials = grpc.credentials.createSsl(tlsRootCert);
@@ -159,12 +143,13 @@ async function newGrpcConnection(): Promise<grpc.Client> {
     "grpc.ssl_target_name_override": peerHostAlias,
   });
 }
-
+// returns the identity
 async function newIdentity(): Promise<Identity> {
   const credentials = await fs.readFile(certPath);
   return { mspId, credentials };
 }
 
+// used for signing the transactions
 async function newSigner(): Promise<Signer> {
   const files = await fs.readdir(keyDirectoryPath);
   const keyPath = path.resolve(keyDirectoryPath, files[0]);
@@ -173,47 +158,26 @@ async function newSigner(): Promise<Signer> {
   return signers.newPrivateKeySigner(privateKey);
 }
 
-/**
- * This type of transaction would typically only be run once by an application the first time it was started after its
- * initial deployment. A new version of the chaincode deployed later would likely not need to run an "init" function.
- */
-async function initLedger(contract: Contract): Promise<void> {
-  console.log(
-    "\n--> Submit Transaction: InitLedger, function creates the initial set of assets on the ledger"
-  );
-
+async function initializeTheLedger(contract: Contract): Promise<void> {
   await contract.submitTransaction("InitLedger");
 
   console.log("*** Transaction committed successfully");
 }
 
-/**
- * Evaluate a transaction to query ledger state.
- */
-async function getAllAssets(contract: Contract): Promise<void> {
-  console.log(
-    "\n--> Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger"
-  );
+async function getAllTheAssets(contract: Contract): Promise<void> {
+  const resultInBytes = await contract.evaluateTransaction("GetAllAssets");
 
-  const resultBytes = await contract.evaluateTransaction("GetAllAssets");
-
-  const resultJson = utf8Decoder.decode(resultBytes);
+  const resultJson = utf8Decoder.decode(resultInBytes);
+  //converted to json
   const result = JSON.parse(resultJson);
-  console.log("*** Result:", result);
+  console.log("*** All the assets:", result);
   return result;
 }
 
-/**
- * Submit a transaction synchronously, blocking until it has been committed to the ledger.
- */
-async function createAsset(
+async function createTheAsset(
   contract: Contract,
   values: { id: string; value: string }
 ): Promise<void> {
-  console.log(
-    "\n--> Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments"
-  );
-
   await contract.submitTransaction(
     "CreateAsset",
     values.id,
@@ -221,30 +185,21 @@ async function createAsset(
     "Org1"
   );
 
-  console.log("*** Transaction committed successfully");
+  console.log("*** Transaction committed successfully,Asset added ");
 }
 
-/**
- * Submit transaction asynchronously, allowing the application to process the smart contract response (e.g. update a UI)
- * while waiting for the commit notification.
- */
-async function transferAssetAsync(
+async function transferTheAssetAsynchronously(
   contract: Contract,
   data: { id: string; owner: string }
 ): Promise<void> {
-  console.log(
-    "\n--> Async Submit Transaction: TransferAsset, updates existing asset owner"
-  );
-
   const commit = await contract.submitAsync("TransferAsset", {
     arguments: [data.id, data.owner],
   });
   const oldOwner = utf8Decoder.decode(commit.getResult());
 
   console.log(
-    `*** Successfully submitted transaction to transfer ownership from ${oldOwner} to Saptha`
+    `*** Successfully submitted transaction to transfer ownership from ${oldOwner} to ${data.owner}`
   );
-  console.log("*** Waiting for transaction commit");
 
   const status = await commit.getStatus();
   if (!status.successful) {
@@ -253,19 +208,7 @@ async function transferAssetAsync(
     );
   }
 
-  console.log("*** Transaction committed successfully");
-}
-
-async function readAssetByID(contract: Contract): Promise<void> {
-  console.log(
-    "\n--> Evaluate Transaction: ReadAsset, function returns asset attributes"
-  );
-
-  const resultBytes = await contract.evaluateTransaction("ReadAsset", assetId);
-
-  const resultJson = utf8Decoder.decode(resultBytes);
-  const result = JSON.parse(resultJson);
-  console.log("*** Result:", result);
+  console.log("*** Transaction committed successfully,Owner changed");
 }
 
 /**
@@ -275,9 +218,7 @@ function envOrDefault(key: string, defaultValue: string): string {
   return process.env[key] || defaultValue;
 }
 
-/**
- * displayInputParameters() will print the global scope parameters used by the main driver routine.
- */
+// displaying all the input parameters of the network to the server log
 async function displayInputParameters(): Promise<void> {
   console.log(`channelName:       ${channelName}`);
   console.log(`chaincodeName:     ${chaincodeName}`);
@@ -289,4 +230,6 @@ async function displayInputParameters(): Promise<void> {
   console.log(`peerEndpoint:      ${peerEndpoint}`);
   console.log(`peerHostAlias:     ${peerHostAlias}`);
 }
+
+// this makes the server listen at port 3002
 app.listen(3002, () => console.log("Fabric gateway server listening at 3002"));
